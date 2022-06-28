@@ -3,9 +3,10 @@ plugins {
     application
 }
 
-group = "net.javaman"
+group = "net.javaman" // Change this to your domain, e.g. "com.google"
 version = "1.0-SNAPSHOT"
 
+// Helper to find the correct JCuda native library
 fun getOsString(): String {
     val vendor = System.getProperty("java.vendor")
     return if ("The Android Project" == vendor) {
@@ -23,6 +24,7 @@ fun getOsString(): String {
     }
 }
 
+// Helper to find the correct JCuda native library
 fun getArchString(): String {
     var osArch = System.getProperty("os.arch")
     osArch = osArch.toLowerCase()
@@ -46,10 +48,11 @@ repositories {
 }
 
 dependencies {
+    // There is/was a bug with JCuda not pulling the correct native library, so state it specifically here
     implementation("org.jcuda:jcuda:11.6.1") { isTransitive = false }
     implementation("org.jcuda:jcuda-natives:11.6.1:${getOsString() + "-" + getArchString()}")
 }
 
 application {
-    mainClass.set("net.javaman.Main")
+    mainClass.set("net.javaman.Main") // Change this to your domain, e.g. "com.google"
 }
