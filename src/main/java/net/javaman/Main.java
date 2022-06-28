@@ -10,7 +10,7 @@ import java.util.Objects;
 import java.util.Random;
 
 public class Main {
-    private static final int BLOCK_SIZE = 256; // How many elements to process in one pass on the GPU
+    private static final int BLOCK_SIZE = 512; // How many elements to process in one pass on the GPU
     private static final long STDOUT_BUFFER_SIZE = 4096L; // Allow console output from the GPU
 
     public static void main(String[] args) throws IOException {
@@ -39,7 +39,7 @@ public class Main {
         JCudaDriver.cuCtxSetCurrent(context);
 
         // Randomize a couple of vectors with n elements each, and one to get the output of their sum
-        final var n = 1000;
+        final var n = 100_000_000;
         var a = new float[n];
         var b = new float[n];
         var c = new float[n];
