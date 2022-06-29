@@ -2,6 +2,8 @@
 
 Example of JCuda (Cuda native binary called from a Java runtime application)
 
+Some of this code was taken from my project [Flow Key Virtual Greenscreen](https://github.com/TheNewJavaman/flow-key-virtual-greenscreen).
+
 ## Important Files
 
 | File                                                                               | Description                     | 

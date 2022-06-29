@@ -1,1 +1,0 @@
-nvcc "main.cu" --cubin -o "main.cubin" -lineinfo -gencode arch=compute_86,code=sm_86

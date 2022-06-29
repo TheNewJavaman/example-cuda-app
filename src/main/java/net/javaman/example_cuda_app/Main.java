@@ -1,8 +1,14 @@
-package net.javaman;
+package net.javaman.example_cuda_app;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
-import jcuda.driver.*;
+import jcuda.driver.CUcontext;
+import jcuda.driver.CUdevice;
+import jcuda.driver.CUdeviceptr;
+import jcuda.driver.CUfunction;
+import jcuda.driver.CUlimit;
+import jcuda.driver.CUmodule;
+import jcuda.driver.JCudaDriver;
 import jcuda.nvrtc.JNvrtc;
 
 import java.io.IOException;
@@ -12,9 +18,10 @@ import java.util.Random;
 public class Main {
     private static final int BLOCK_SIZE = 512; // How many elements to process in one pass on the GPU
     private static final long STDOUT_BUFFER_SIZE = 4096L; // Allow console output from the GPU
+    private static final int N = 100_000_000; // Number of elements being added
 
     public static void main(String[] args) throws IOException {
-        // Show errors being thrown
+        // Show errors being thrown (if any)
         JCudaDriver.setExceptionsEnabled(true);
         JNvrtc.setExceptionsEnabled(true);
 
@@ -26,42 +33,36 @@ public class Main {
         JCudaDriver.cuCtxCreate(context, 0, device);
 
         // Load the Cuda binary you've compiled from main.cu
-        CUmodule module = new CUmodule();
+        var module = new CUmodule();
         var cubin = Objects.requireNonNull(Main.class.getResourceAsStream("main.cubin")).readAllBytes();
         JCudaDriver.cuModuleLoadData(module, cubin);
         var kernel = new CUfunction();
-        JCudaDriver.cuModuleGetFunction(kernel, module, "mainKernel");
+        JCudaDriver.cuModuleGetFunction(kernel, module, "add_vectors_kernel");
 
         // Enable console output
         JCudaDriver.cuCtxSetLimit(CUlimit.CU_LIMIT_PRINTF_FIFO_SIZE, STDOUT_BUFFER_SIZE);
 
-        // If multithreading, make sure to use the context on your current thread!
+        // If multithreading, make sure to switch the context to this thread!
         JCudaDriver.cuCtxSetCurrent(context);
 
-        // Randomize a couple of vectors with n elements each, and one to get the output of their sum
-        final var n = 100_000_000;
-        var a = new float[n];
-        var b = new float[n];
-        var c = new float[n];
+        // Randomize vectors a and b with n elements each
         var rand = new Random();
-        for (int i = 0; i < n; i++) {
-            a[i] = rand.nextFloat();
-            b[i] = rand.nextFloat();
-        }
+        var a = rand.doubles(N).toArray();
+        var b = rand.doubles(N).toArray();
 
         // Allocate memory on the GPU for these vectors, and get pointers to that memory on the device
-        var aPtr = allocMem(Sizeof.FLOAT * n, Pointer.to(a));
-        var bPtr = allocMem(Sizeof.FLOAT * n, Pointer.to(b));
-        var cPtr = allocMem(Sizeof.FLOAT * n, Pointer.to(c));
+        var aPtr = allocMem(Sizeof.DOUBLE * N, Pointer.to(a));
+        var bPtr = allocMem(Sizeof.DOUBLE * N, Pointer.to(b));
+        var cPtr = allocMem(Sizeof.DOUBLE * N, null);
         var kernelParams = Pointer.to(
-                Pointer.to(new int[]{n}),
+                Pointer.to(new int[]{N}), // A little hack to pass a primitive as a parameter to the kernel
                 Pointer.to(aPtr),
                 Pointer.to(bPtr),
                 Pointer.to(cPtr)
         );
 
         // Launch the kernel on the GPU and wait for it to finish
-        var gridSize = (int) Math.ceil((float) n / BLOCK_SIZE);
+        var gridSize = (int) Math.ceil((float) N / BLOCK_SIZE);
         JCudaDriver.cuLaunchKernel(kernel,
                 gridSize, 1, 1,
                 BLOCK_SIZE, 1, 1,
@@ -70,14 +71,16 @@ public class Main {
         );
         JCudaDriver.cuCtxSynchronize();
 
-        // Get the output and free the memory from earlier
-        JCudaDriver.cuMemcpyDtoH(Pointer.to(c), cPtr, Sizeof.FLOAT * n);
+        // Get the output and free the device memory from earlier
+        var c = new double[N];
+        JCudaDriver.cuMemcpyDtoH(Pointer.to(c), cPtr, Sizeof.DOUBLE * N);
         JCudaDriver.cuMemFree(aPtr);
         JCudaDriver.cuMemFree(bPtr);
         JCudaDriver.cuMemFree(cPtr);
 
         // Print the results! The vectors should have been added in c
-        for (int i = 0 ; i < 5; i++) {
+        System.out.printf("First 5 (of %d) elements: %n", N);
+        for (int i = 0; i < 5; i++) {
             System.out.printf("Element %d: %1.3f + %1.3f = %1.3f %n", i, a[i], b[i], c[i]);
         }
     }

@@ -54,5 +54,5 @@ dependencies {
 }
 
 application {
-    mainClass.set("net.javaman.Main") // Change this to your domain, e.g. "com.google"
+    mainClass.set("net.javaman.example_cuda_app.Main") // Change this to your domain, e.g. "com.google"
 }
